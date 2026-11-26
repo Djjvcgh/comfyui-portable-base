@@ -1,0 +1,8 @@
+autoOpen: false
+apps:
+  - name: ComfyUI
+    root: .
+    port: 8188
+    autoOpen: false
+    autoPreview: false
+    run: python3 portable.py start --listen 0.0.0.0 --port 8188
