@@ -63,7 +63,16 @@ def install(args, data):
     pip = [str(PYTHON), '-m', 'pip', '--disable-pip-version-check']
     subprocess.run([*pip, 'install', '--index-url', index, *packages], check=True)
     accelerator.write_text(index + '\n', encoding='utf-8')
-    files = [CORE / 'requirements.txt', *node_requirements]
+    core_requirements = CORE / 'requirements.txt'
+    if args.skip_example_templates:
+        pinned_templates = f"comfyui-workflow-templates=={ref['workflow_templates']}"
+        lines = core_requirements.read_text(encoding='utf-8').splitlines()
+        if lines.count(pinned_templates) != 1:
+            raise ValueError('上游示例模板依赖与锁定版本不一致')
+        lines.remove(pinned_templates)
+        core_requirements = VENV / 'portable-core-requirements.txt'
+        core_requirements.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    files = [core_requirements, *node_requirements]
     flags = [flag for path in files for flag in ('-r', str(path))]
     constraints = VENV / 'portable-constraints.txt'
     constraints.write_text('\n'.join(packages) + '\n', encoding='utf-8')
@@ -106,12 +115,15 @@ def start(args, data):
         data.mkdir(exist_ok=True)
     if not data.is_dir():
         raise ValueError(f'数据目录不存在 {data}')
+    (data / 'custom_nodes').mkdir(exist_ok=True)
     cmd = [str(PYTHON), str(CORE / 'main.py'), '--base-directory', str(data),
            '--listen', args.listen, '--port', str(args.port), '--disable-auto-launch']
     if args.cpu:
         cmd.append('--cpu')
     if args.lowvram:
         cmd.append('--lowvram')
+    if os.name == 'nt':
+        raise SystemExit(subprocess.run(cmd, cwd=CORE).returncode)
     os.chdir(CORE)
     os.execv(PYTHON, cmd)
 
@@ -124,6 +136,7 @@ def main():
     setup.add_argument('--cpu', action='store_true', help='安装 CPU 版 PyTorch')
     setup.add_argument('--torch-index', help='与云主机驱动兼容的 PyTorch 官方软件源')
     setup.add_argument('--node-dependencies', action='store_true', help='一并安装备份中自定义节点声明的依赖')
+    setup.add_argument('--skip-example-templates', action='store_true', help='跳过官方示例模板库，仍可加载自己的工作流')
     actions.add_parser('verify', help='按清单核对模型、工作流和节点文件')
     run = actions.add_parser('start', help='启动画布')
     run.add_argument('--cpu', action='store_true')

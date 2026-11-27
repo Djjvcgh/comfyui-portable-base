@@ -15,6 +15,8 @@ python3 portable.py install --node-dependencies
 python3 portable.py start
 ```
 
+网络下载不到官方示例模板库时，可以给 `install` 加 `--skip-example-templates`。自己的模型和工作流仍可正常读取。
+
 启动默认只监听本机 `127.0.0.1:8188`。普通云主机可经 SSH 转发后访问本机的 `http://127.0.0.1:8188`，或使用云平台带身份验证的入口。
 
 ```bash
